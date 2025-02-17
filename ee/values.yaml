@@ -1,0 +1,151 @@
+# Default values for Traefik Enterprise
+cluster: "dbl24tst2w50"
+
+ingressClass:
+  enabled: true
+  isDefaultClass: true
+
+log:
+ level: DEBUG
+ format: JSON
+
+registry:
+  enabled: true
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+            - key: kubernetes.io/os
+              operator: In
+              values:
+                - linux
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+                - key: component
+                  operator: In
+                  values:
+                    - registry
+            topologyKey: "kubernetes.io/hostname"
+  tolerations: []
+
+
+controller:
+  replicas: 1
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "1000m"
+      memory: "4Gi"
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+            - key: kubernetes.io/os
+              operator: In
+              values:
+                - linux
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+                - key: component
+                  operator: In
+                  values:
+                    - controllers
+            topologyKey: "kubernetes.io/hostname"
+  staticConfig:
+    configMap:
+      name: dbl24tst2w50-static-config
+      key: "static.yaml"
+    content:
+  tolerations: []
+
+proxy:
+  replicas: 1
+  resources:
+    requests:
+      cpu: "400m"
+      memory: "256Mi"
+    limits:
+      cpu: "1000m"
+      memory: "1Gi"
+  ports:
+    - name: traefik
+      port: 9000
+    - name: http
+      port: 7080
+    - name: https
+      port: 7443
+    - name: metrics
+      port: 8080
+  serviceType: LoadBalancer
+  servicePorts:
+    - name: http
+      port: 80
+      targetPort: http
+    - name: https
+      port: 443
+      targetPort: https
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+            - key: kubernetes.io/os
+              operator: In
+              values:
+                - linux
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+                - key: component
+                  operator: In
+                  values:
+                    - proxies
+            topologyKey: "kubernetes.io/hostname"
+  autoscaling:
+    enabled: false
+  enablePluginWait: true
+  readinessProbe:
+    httpGet:
+      path: /ping
+      port: traefik
+    failureThreshold: 1
+    initialDelaySeconds: 2
+    periodSeconds: 10
+    successThreshold: 1
+    timeoutSeconds: 2
+  livenessProbe:
+    httpGet:
+      path: /ping
+      port: traefik
+    failureThreshold: 3
+    initialDelaySeconds: 2
+    periodSeconds: 10
+    successThreshold: 1
+    timeoutSeconds: 2
+  securityContext:
+    runAsUser: 65532
+  podAnnotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8080"
+  tolerations: []
+priorityClassName: ""
+
+mesh:
+  enabled: false
+  kubedns: false
+  clusterDomain: "cluster.local"
